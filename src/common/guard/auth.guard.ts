@@ -10,26 +10,27 @@ import { jwtConstants } from '../../auth/constants/jwt.constants';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(
-    private readonly jwtService: JwtService, // Assuming JwtService is imported from the appropriate module
-  ) {}
+  constructor(private readonly jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
-    if (!token) {
-      throw new UnauthorizedException();
-    }
 
-    // Here you would typically verify the token, using a JWT library
+    if (!token) throw new UnauthorizedException('Token missing');
+
     try {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: jwtConstants.secret,
       });
-      request.user = payload; // Attach the user information to the request object
+
+      request.user = {
+        ...payload,
+        role: payload.roles?.[0] ?? null, // 👈 Normaliza el rol
+      };
     } catch (error) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Invalid token');
     }
+    console.log('✅ request.user después del guard:', request.user);
 
     return true;
   }
